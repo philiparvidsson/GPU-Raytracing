@@ -13,7 +13,7 @@ Features
 
 .. image:: assets/images/image_2016-11-28_05-54-29.png
 
-Building
+Building and Running
 ========
 
 1. Clone this repository.
