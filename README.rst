@@ -1,13 +1,14 @@
 Raytracing in real-time on the GPU
 ##################################
 
-Real-time raytracer implemented in HLSL.
+Real-time raytracer implemented in HLSL. The raytracer runs on the GPU, not the CPU. This allows for parallelization pf pixel calculations on the GPU's shader units, resulting in thousand-fold speedup for the raytracing process, compared to `software rendering <https://github.com/philiparvidsson/raytracing>`_.
 
 Features
 ========
 
-* Parallelization through use of shader units on GPU
 * Adaptive antialiasing (not working too well)
+* Parallelization through use of shader units on GPU
+* Phong shading model
 * Soft shadows/shadow ray sampling
 
 .. image:: assets/images/image_2016-11-28_05-54-29.png
