@@ -23,7 +23,7 @@ internal static class Program {
         Game.Inst.Run(new SharpDXGraphicsMgr(),
                       new SharpDXSoundMgr(),
                       "RTRT - Real-time Raytracing",
-                      640, 640,
+                      320, 320,
                       new MainScene());
     }
 }
