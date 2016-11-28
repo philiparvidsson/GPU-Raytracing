@@ -18,4 +18,4 @@ Building
 
 1. Clone this repository.
 2. Chdir into the project root.
-3. Type :code:`pythom make.py init && make python make.py && python make.py run`
+3. Type :code:`pythom make.py init && python make.py && python make.py run`
