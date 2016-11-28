@@ -18,6 +18,11 @@ def content(conf):
     copy(r'vendor\PrimusGE\assets\Content', os.path.join(conf.bindir, 'Content'))
 
 @target(conf=csc.conf)
+def init(conf):
+    run_program('git', [ 'submodule', 'init'   ])
+    run_program('git', [ 'submodule', 'update' ])
+
+@target(conf=csc.conf)
 @depends_on('primusge_compile')
 def libs(conf):
     copy(r'vendor\PrimusGE\bin'        , conf.bindir, '*.dll')
