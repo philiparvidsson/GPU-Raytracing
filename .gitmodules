@@ -1,0 +1,3 @@
+[submodule "vendor/PrimusGE"]
+	path = vendor/PrimusGE
+	url = git@github.com:philiparvidsson/PrimusGE.git
