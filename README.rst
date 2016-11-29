@@ -7,6 +7,7 @@ Features
 ========
 
 * Adaptive antialiasing (not working too well)
+* Keyboard controls
 * Parallelization through use of shader units on GPU
 * Phong shading model
 * Soft shadows/shadow ray sampling
