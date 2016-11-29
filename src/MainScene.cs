@@ -11,7 +11,21 @@ using PrimusGE;
 using PrimusGE.Core;
 using PrimusGE.Graphics;
 using PrimusGE.Graphics.Shaders;
+using PrimusGE.Input;
 using PrimusGE.Subsystems;
+
+/*--------------------------------------
+ * STRUCTS
+ *------------------------------------*/
+
+ public struct ShaderConstants {
+     public float EyeX;
+     public float EyeZ;
+     public float EyeTheta;
+
+     public float Time;
+ }
+
 
 /*--------------------------------------
  * CLASSES
@@ -28,12 +42,11 @@ public class MainScene : Scene {
      * NON-PUBLIC FIELDS
      *------------------------------------*/
 
-    private float    m_DoNothingTimer      = 0.0f;
-    private Keyboard m_Keyboard            = Keyboard();
-    private IShader  m_Shader              = null;
-    private DateTime m_ShaderLastWriteTime = default (DateTime);
-    private float    m_ShaderUpdateTimer   = 0.0f;
-    private float    m_Time                = 0.0f;
+    private float           m_DoNothingTimer      = 0.0f;
+    private IShader         m_Shader              = null;
+    private ShaderConstants m_ShaderConstants     = default (ShaderConstants);
+    private DateTime        m_ShaderLastWriteTime = default (DateTime);
+    private float           m_ShaderUpdateTimer   = 0.0f;
 
     /*--------------------------------------
      * PUBLIC METHODS
@@ -48,8 +61,11 @@ public class MainScene : Scene {
 
         var g = Game.Inst.Graphics;
 
-        m_Shader = g.ShaderMgr.LoadPS<float>(SHADER);
+        m_Shader = g.ShaderMgr.LoadPS<ShaderConstants>(SHADER);
         m_ShaderLastWriteTime = File.GetLastWriteTime(SHADER);
+
+        m_ShaderConstants.EyeZ = 3.0f;
+        m_ShaderConstants.EyeTheta = 3.141592654f;
     }
 
     public override void Draw(float dt) {
@@ -60,14 +76,55 @@ public class MainScene : Scene {
             m_DoNothingTimer = 0.0f;
         }
 
+        var kb = Game.Inst.Keyboard;
+        var sc = m_ShaderConstants;
+
+        if (kb.IsKeyPressed(Key.W)) {
+            var a  = (float)Math.PI / 2.0f;
+            var dx = 1.5f*(float)Math.Cos(m_ShaderConstants.EyeTheta + a)*dt;
+            var dz = 1.5f*(float)Math.Sin(m_ShaderConstants.EyeTheta + a)*dt;
+            m_ShaderConstants.EyeX += dx;
+            m_ShaderConstants.EyeZ += dz;
+        }
+
+        if (kb.IsKeyPressed(Key.S)) {
+            var a  = (float)Math.PI / 2.0f;
+            var dx = 1.5f*(float)Math.Cos(m_ShaderConstants.EyeTheta - a)*dt;
+            var dz = 1.5f*(float)Math.Sin(m_ShaderConstants.EyeTheta - a)*dt;
+            m_ShaderConstants.EyeX += dx;
+            m_ShaderConstants.EyeZ += dz;
+        }
+
+        if (kb.IsKeyPressed(Key.A)) {
+            var dx = 1.5f*(float)Math.Cos(m_ShaderConstants.EyeTheta)*dt;
+            var dz = 1.5f*(float)Math.Sin(m_ShaderConstants.EyeTheta)*dt;
+            m_ShaderConstants.EyeX -= dx;
+            m_ShaderConstants.EyeZ -= dz;
+        }
+
+        if (kb.IsKeyPressed(Key.D)) {
+            var dx = 1.5f*(float)Math.Cos(m_ShaderConstants.EyeTheta)*dt;
+            var dz = 1.5f*(float)Math.Sin(m_ShaderConstants.EyeTheta)*dt;
+            m_ShaderConstants.EyeX += dx;
+            m_ShaderConstants.EyeZ += dz;
+        }
+
+        if (kb.IsKeyPressed(Key.Left)) {
+            m_ShaderConstants.EyeTheta += 0.4f * 2.0f*3.141592654f*dt;
+        }
+
+        if (kb.IsKeyPressed(Key.Right)) {
+            m_ShaderConstants.EyeTheta -= 0.4f * 2.0f*3.141592654f*dt;
+        }
+
         var g = Game.Inst.Graphics;
 
         if (m_DoNothingTimer <= 0.0f) {
             g.BeginFrame();
             g.RenderTarget.Clear(Color.Black);
 
-            m_Time += dt;
-            m_Shader.SetConstants(m_Time);
+            m_ShaderConstants.Time += 0.5f*dt;
+            m_Shader.SetConstants(m_ShaderConstants);
             g.ApplyPostFX(g.ScreenRenderTarget, m_Shader);
 
             g.EndFrame();

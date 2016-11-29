@@ -47,6 +47,10 @@ SamplerState TextureSampler {
 static const float PosInf = 1.0 / 0.0;
 
 cbuffer cbConstants: register(b1) {
+  float EyeX;
+  float EyeZ;
+  float EyeTheta;
+
   float Time;
 }
 
@@ -59,9 +63,9 @@ static const int num_samples_per_light = 4;
 
 // w coordinate is radius
 static float4 lights[] = {
-  float4(sin(Time), 0.1, cos(Time), 0.2),
-  float4(cos(-Time), 0.0, sin(-Time), 0.3),
-  float4(cos(Time), 0.5+0.4*sin(2.0*Time), 1.9, 0.2),
+  float4(1.2*sin(Time*0.7), 0.2, 1.2*cos(Time*0.7), 0.2),
+  float4(1.4*sin(-Time*1.3), 0.0, 1.6*cos(-Time*1.3), 0.3),
+  float4(cos(Time), 0.5+0.4*sin(2.0*Time), 1.1, 0.2),
 };
 
 MATERIAL material(in float ar, in float ag, in float ab,
@@ -88,6 +92,11 @@ static const MATERIAL white = material(0.0, 0.0, 0.0,
                                        0.7, 0.7, 0.7,
                                        0.0, 0.0, 0.0,
                                        100.0);
+
+static const MATERIAL glow = material(1.0, 1.0, 1.0,
+                                      0.7, 0.7, 0.7,
+                                      0.0, 0.0, 0.0,
+                                      100.0);
 
 /*-------------------------------------
  * FUNCTIONS
@@ -168,13 +177,8 @@ void plane(in int id, in RAY ray, inout ISECT isect, in float3 p, in float3 n, i
   float3 o = ray.o;
   float t = (dot(n, p) - dot(n, o)) / dot(n, d);
 
-  if (t < 0.0) {
-    // Plane is behind camera.
-    return;
-  }
-
-  if (t > isect.t) {
-    // Already intersected with a closer object.
+  if (t < 0.0 || t > isect.t) {
+    // Already intersected with a closer object or behind camera.
     return;
   }
 
@@ -211,8 +215,8 @@ void sphere(in int id, in RAY ray, inout ISECT isect, in float3 p, in float r, i
   float t1 = i - j;
   float t  = min(t0, t1);
 
-  if (t > isect.t) {
-    // Already intersected with a closer object.
+  if (t < 0.0 || t > isect.t) {
+    // Already intersected with a closer object or behind camera.
     return;
   }
 
@@ -245,6 +249,10 @@ void trace(in int id, in float3 o, in float3 d, out RAY ray, out ISECT isect) {
   sphere(2, ray, isect, mul(rot, float3(-0.5, 0.3, 0.0)), 0.4, red);
   sphere(3, ray, isect, mul(rot, float3( 0.5, 0.0, 0.0)),  0.4, green);
   sphere(4, ray, isect, mul(rot, float3( 0.1, -0.1, 0.8)), 0.2, yellow);
+
+  sphere(5, ray, isect, lights[0].xyz, 0.35*lights[0].w, glow);
+  sphere(6, ray, isect, lights[1].xyz, 0.35*lights[1].w, glow);
+  sphere(7, ray, isect, lights[2].xyz, 0.35*lights[2].w, glow);
 }
 
 
@@ -272,7 +280,7 @@ float4 traceAA(in float3 o, in float3 d) {
 
   float4 color_sum = 0.0;
   float3 q = d;
-  while (n < 16) {
+  while (n < 8) {
     prev_color = color;
 
     theta += 3.141592654 * (7.0/8.0);
@@ -317,6 +325,12 @@ float4 traceAperture(in float3 o, in float3 p) {
 }
 
 void main(in PS_INPUT psIn, out PS_OUTPUT psOut) {
-  float3 eye = float3(0.0, 0.0, 3.0);
-  psOut.color = traceAA(eye, float3(psIn.pos.xy, 0.0) - eye);
+  float3 eye = float3(EyeX, 0.0, EyeZ);
+  float a = 3.141592654 / 2.0;
+  float theta = EyeTheta + a;
+  float dx = cos(theta) + psIn.pos.x*cos(EyeTheta);
+  float dy = psIn.pos.y;
+  float dz = sin(theta) + psIn.pos.x*sin(EyeTheta);
+  float3 d = float3(dx, dy, dz);
+  psOut.color = traceAA(eye, d);
 }
