@@ -10,7 +10,7 @@ Features
 * Keyboard controls
 * Parallelization through use of shader units on GPU
 * Phong shading model
-* Soft shadows/shadow ray sampling
+* Soft shadows/shadow ray sampling (Monte Carlo integration)
 
 .. image:: assets/images/image_2016-11-28_05-54-29.png
 
