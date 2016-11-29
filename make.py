@@ -47,4 +47,16 @@ def primusge_compile(conf):
 
     os.chdir(cwd)
 
+@target(conf=csc.conf)
+@depends_on('all')
+def scene0(conf):
+    os.chdir(conf.bindir)
+    run_program(conf.name, [ 'Scene0.ps.hlsl' ])
+
+@target(conf=csc.conf)
+@depends_on('all')
+def scene1(conf):
+    os.chdir(conf.bindir)
+    run_program(conf.name, [ 'Scene1.ps.hlsl' ])
+
 pymake2(CONF)

@@ -1,4 +1,4 @@
-namespace ComplexFuncViz {
+namespace GpuRaytrace {
 
 /*--------------------------------------
  * USINGS
@@ -36,8 +36,6 @@ public class MainScene : Scene {
      * NON-PUBLIC CONSTANTS
      *------------------------------------*/
 
-    private const string SHADER = "Raytracer.ps.hlsl";
-
     /*--------------------------------------
      * NON-PUBLIC FIELDS
      *------------------------------------*/
@@ -47,6 +45,20 @@ public class MainScene : Scene {
     private ShaderConstants m_ShaderConstants     = default (ShaderConstants);
     private DateTime        m_ShaderLastWriteTime = default (DateTime);
     private float           m_ShaderUpdateTimer   = 0.0f;
+
+    /*--------------------------------------
+     * PUBLIC PROPERTIES
+     *------------------------------------*/
+
+    public string ShaderName { get; set; }
+
+    /*--------------------------------------
+     * CONSTRUCTORS
+     *------------------------------------*/
+
+    public MainScene(string shaderName) {
+        ShaderName = shaderName ?? "Scene1.ps.hlsl";
+    }
 
     /*--------------------------------------
      * PUBLIC METHODS
@@ -61,15 +73,17 @@ public class MainScene : Scene {
 
         var g = Game.Inst.Graphics;
 
-        m_Shader = g.ShaderMgr.LoadPS<ShaderConstants>(SHADER);
-        m_ShaderLastWriteTime = File.GetLastWriteTime(SHADER);
+        m_Shader = g.ShaderMgr.LoadPS<ShaderConstants>(ShaderName);
+        m_ShaderLastWriteTime = File.GetLastWriteTime(ShaderName);
 
-        m_ShaderConstants.EyeZ = 3.0f;
+        m_ShaderConstants.EyeZ = 0.0f;
         m_ShaderConstants.EyeTheta = 3.141592654f;
     }
 
     public override void Draw(float dt) {
         base.Draw(dt);
+
+        //System.Threading.Thread.Sleep(10);
 
         m_DoNothingTimer -= dt;
         if (m_DoNothingTimer < 0.0f) {
@@ -128,18 +142,20 @@ public class MainScene : Scene {
             g.ApplyPostFX(g.ScreenRenderTarget, m_Shader);
 
             g.EndFrame();
+
+            //m_DoNothingTimer = 0.1f;
         }
 
         m_ShaderUpdateTimer -= dt;
         if (m_ShaderUpdateTimer <= 0.0f) {
-            var lastWriteTime = File.GetLastWriteTime(SHADER);
+            var lastWriteTime = File.GetLastWriteTime(ShaderName);
 
             if (lastWriteTime > m_ShaderLastWriteTime) {
                 m_ShaderLastWriteTime = lastWriteTime;
 
                 IShader shader = null;
 
-                try { shader = g.ShaderMgr.LoadPS<float>(SHADER); }
+                try { shader = g.ShaderMgr.LoadPS<float>(ShaderName); }
                 catch (Exception e) { Console.WriteLine(e); }
 
                 if (shader != null) {
@@ -152,7 +168,7 @@ public class MainScene : Scene {
                 }
             }
 
-            m_ShaderUpdateTimer = 0.5f;
+            m_ShaderUpdateTimer = 7.5f;
         }
     }
 }

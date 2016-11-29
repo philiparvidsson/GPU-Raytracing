@@ -1,4 +1,4 @@
-namespace ComplexFuncViz {
+namespace GpuRaytrace {
 
 /*--------------------------------------
  * USINGS
@@ -22,12 +22,12 @@ internal static class Program {
      *------------------------------------*/
 
     [STAThread]
-    public static void Main() {
+    public static void Main(string[] args) {
         Game.Inst.Run(new SharpDXGraphicsMgr(),
                       new SharpDXSoundMgr(),
-                      "RTRT - Real-time Raytracing",
-                      340, 340,
-                      new MainScene());
+                      "GPU-RT",
+                      400, 400,
+                      new MainScene(args.Length > 0 ? args[0] : null));
     }
 }
 
