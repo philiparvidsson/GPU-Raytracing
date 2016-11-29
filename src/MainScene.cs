@@ -29,6 +29,7 @@ public class MainScene : Scene {
      *------------------------------------*/
 
     private float    m_DoNothingTimer      = 0.0f;
+    private Keyboard m_Keyboard            = Keyboard();
     private IShader  m_Shader              = null;
     private DateTime m_ShaderLastWriteTime = default (DateTime);
     private float    m_ShaderUpdateTimer   = 0.0f;
