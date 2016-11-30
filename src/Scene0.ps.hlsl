@@ -127,7 +127,6 @@ float4 calcColor(in RAY ray, in ISECT isect) {
       float3 q = lights[i].w * float3(sin(a)*cos(b), sin(a)*sin(b), cos(a));
       float3 l = lights[i].xyz - p + q;
 
-      // Don't case shadows from the lights.
       trace(isect.id, p, l, shadowray, shadowisect);
       if (shadowisect.t > 0.0 && shadowisect.t < length(l)) {
         continue;

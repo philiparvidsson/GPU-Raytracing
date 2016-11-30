@@ -51,10 +51,10 @@ struct lightT {
 
 static const int NUM_LIGHTS = 4;
 static const lightT lights[NUM_LIGHTS] = {
-    lightT::create(float3(-0.4+cos(time*1.11), 0.5, -0.2+sin(time*1.11)), 0.2, 0.1),
-    lightT::create(float3( 0.8, 0.1, 0.4), 0.2, 0.1),
-    lightT::create(float3( -0.2, 0.6, 0.1), 0.2, 0.1),
-    lightT::create(float3( 0.2, 0.4, -0.5), 0.2, 0.1)
+    lightT::create(float3(-0.4+cos(time*1.11), 0.5, -0.2+sin(time*1.11)), 0.22, 0.1),
+    lightT::create(float3( 0.8, 0.1, 0.4), 0.22, 0.1),
+    lightT::create(float3( -0.2, 0.6, 0.1), 0.22, 0.1),
+    lightT::create(float3( 0.2, 0.4, -0.5), 0.22, 0.1)
 };
 
 float rand(float2 x) {
@@ -95,6 +95,7 @@ struct rayT {
 float3 calcColorNoRecurse(rayT r, intersectionT x);
 
 intersectionT trace(rayT r);
+intersectionT traceNoRefractive(rayT r);
 
 struct ambientMaterialT {
     static float3 calcColor(rayT r, intersectionT x) {
@@ -218,7 +219,7 @@ struct reflectiveMaterialT {
         float3 b = specularMaterialT::calcColor(r, x);
         float  d = 0.8;
 
-        return a + b;
+        return pow(a, 1.2) + b;
     }
 
     static materialT create(float ar, float ag, float ab,
@@ -239,14 +240,41 @@ struct reflectiveMaterialT {
     }
 };
 
-
 struct refractiveMaterialT {
     static float3 calcColor(rayT r, intersectionT x) {
-        float3 v = normalize(x.p - r.o);
-        rayT rRefract = rayT::create(x.p, refract(v, x.n, 0.9));
-        intersectionT xRefract = trace(rRefract);
+        float3 n = x.n;
 
-        return calcColorNoRecurse(rRefract, xRefract);
+        float cosI = dot(r.d, n);
+        float n1, n2;
+
+        if (cosI > 0.0) {
+            n1 = 1.33;
+            n2 = 1.0;
+
+            n = -n;
+        }
+        else {
+            n1 = 1.0;
+            n2 = 1.33;
+
+            cosI = -cosI;
+        }
+
+        float cosT = 1.0 - pow(n1/n2, 2.0)*(1.0 - pow(cosI, 2.0));
+
+        if (cosT < 0.0) {
+            return reflectiveMaterialT::calcColor(r, x) + specularMaterialT::calcColor(r, x);
+        }
+
+        cosT = sqrt(cosT);
+
+        float R = pow((n1*cosI - n2*cosT)/(n1*cosI + n2*cosT), 2.0) + pow((n2*cosI - n1*cosT)/(n1*cosT + n2*cosI), 2.0);
+
+        float3 d = r.d*(n1/n2) + x.n*((n1/n2)*cosI - cosT);
+        rayT rRefract = rayT::create(x.p, d);
+        intersectionT xRefract = traceNoRefractive(rRefract);
+
+        return calcColorNoRecurse(rRefract, xRefract) + specularMaterialT::calcColor(r, x);
     }
 
     static materialT create(float ar, float ag, float ab,
@@ -270,19 +298,21 @@ struct refractiveMaterialT {
 static const materialT blue = diffuseMaterialT::create(0.2, 0.5, 0.7,
                                                        0.1, 0.5, 1.0);
 
-static const materialT green = diffuseMaterialT::create(0.2, 0.7, 0.2,
-                                                        0.1, 1.0, 0.1);
+static const materialT green = specularMaterialT::create(0.2, 0.4, 0.3,
+                                                         0.1, 0.7, 0.4,
+                                                         1.0, 1.0, 1.0,
+                                                         50.0);
 
 static const materialT reflective = reflectiveMaterialT::create(0.0, 0.0, 0.0,
                                                                 0.0, 0.0, 0.0,
-                                                                1.0, 1.0, 1.0,
-                                                                100.0,
+                                                                5.0, 5.0, 5.0,
+                                                                500.0,
                                                                 0.5);
 
 static const materialT refractive = refractiveMaterialT::create(0.0, 0.0, 0.0,
                                                                 0.0, 0.0, 0.0,
-                                                                1.0, 1.0, 1.0,
-                                                                100.0,
+                                                                5.0, 5.0, 5.0,
+                                                                300.0,
                                                                 0.5);
 
 static const materialT violet = diffuseMaterialT::create(0.15, 0.1, 0.2,
@@ -393,7 +423,7 @@ static const planeT planes[NUM_PLANES] = {
 static const int NUM_SPHERES = 6;
 static const sphereT spheres[NUM_SPHERES] = {
     sphereT::create(float3(0.0, 0.3, 0.0), 0.2, reflective),
-    sphereT::create(float3(0.5, 0.5, 0.5), 0.15, refractive),
+    sphereT::create(float3(0.6, 0.5, 0.6), 0.15, refractive),
     sphereT::create(float3(0.7*cos(time*1.3), 0.3, 0.7*sin(time*1.3)), 0.1, white),
     sphereT::create(float3(0.95*cos(time*0.8), 0.3, 0.95*sin(time*0.8)), 0.07, blue),
     sphereT::create(float3(1.15*cos(time*1.5), 0.3, 1.15*sin(time*1.5)), 0.09, yellow),
@@ -428,6 +458,25 @@ float3 calcColorNoRecurse(rayT r, intersectionT x) {
     return float3(1.0, 0.0, 1.0);
 }
 
+intersectionT traceNoRefractive(rayT r) {
+    intersectionT x;
+
+    x.t0 = T_FAR;
+
+    for (int i = 0; i < NUM_PLANES; i++) {
+        planes[i].intersect(r, x);
+    }
+
+    for (int i = 0; i < NUM_SPHERES; i++) {
+        if (spheres[i].m.t == MAT_REFRACTIVE) {
+            continue;
+        }
+
+        spheres[i].intersect(r, x);
+    }
+
+    return x;
+}
 intersectionT trace(rayT r) {
     intersectionT x;
 
