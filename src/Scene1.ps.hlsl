@@ -323,8 +323,8 @@ static const materialT white = specularMaterialT::create(0.4, 0.4, 0.6,
                                                          1.0, 1.0, 1.0,
                                                          100.0);
 
-static const materialT yellow = diffuseMaterialT::create(0.7, 0.5, 0.2,
-                                                         1.0, 0.4, 0.1);
+static const materialT yellow = diffuseMaterialT::create(0.7, 0.4, 0.2,
+                                                         1.0, 0.6, 0.1);
 
 struct planeT {
     materialT m;
@@ -423,11 +423,11 @@ static const planeT planes[NUM_PLANES] = {
 static const int NUM_SPHERES = 6;
 static const sphereT spheres[NUM_SPHERES] = {
     sphereT::create(float3(0.0, 0.3, 0.0), 0.2, reflective),
-    sphereT::create(float3(0.6, 0.5, 0.6), 0.15, refractive),
-    sphereT::create(float3(0.7*cos(time*1.3), 0.3, 0.7*sin(time*1.3)), 0.1, white),
+    sphereT::create(float3(0.65, 0.5, 0.65), 0.15, refractive),
+    sphereT::create(float3(0.7*cos(time*1.3), 0.4, 0.7*sin(time*1.3)), 0.1, white),
     sphereT::create(float3(0.95*cos(time*0.8), 0.3, 0.95*sin(time*0.8)), 0.07, blue),
-    sphereT::create(float3(1.15*cos(time*1.5), 0.3, 1.15*sin(time*1.5)), 0.09, yellow),
-    sphereT::create(float3(1.35*cos(time*1.4), 0.3, 1.35*sin(time*1.4)), 0.09, green)
+    sphereT::create(float3(1.15*cos(time*1.5), 0.6, 1.15*sin(time*1.5)), 0.09, yellow),
+    sphereT::create(float3(1.35*cos(time*1.4), 0.5, 1.35*sin(time*1.4)), 0.09, green)
 };
 
 float3 calcColor(rayT r, intersectionT x) {
