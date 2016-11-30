@@ -274,7 +274,7 @@ struct refractiveMaterialT {
         rayT rRefract = rayT::create(x.p, d);
         intersectionT xRefract = traceNoRefractive(rRefract);
 
-        return calcColorNoRecurse(rRefract, xRefract) + specularMaterialT::calcColor(r, x);
+        return 0.8*calcColorNoRecurse(rRefract, xRefract) + 0.2*reflectiveMaterialT::calcColor(r, x) + specularMaterialT::calcColor(r, x);
     }
 
     static materialT create(float ar, float ag, float ab,
@@ -422,7 +422,7 @@ static const planeT planes[NUM_PLANES] = {
 
 static const int NUM_SPHERES = 6;
 static const sphereT spheres[NUM_SPHERES] = {
-    sphereT::create(float3(0.0, 0.3, 0.0), 0.2, reflective),
+    sphereT::create(float3(0.0, 0.8, 0.0), 0.2, reflective),
     sphereT::create(float3(0.65, 0.5, 0.65), 0.15, refractive),
     sphereT::create(float3(0.7*cos(time*1.3), 0.4, 0.7*sin(time*1.3)), 0.1, white),
     sphereT::create(float3(0.95*cos(time*0.8), 0.3, 0.95*sin(time*0.8)), 0.07, blue),
@@ -455,7 +455,9 @@ float3 calcColorNoRecurse(rayT r, intersectionT x) {
     if (x.m.t == MAT_DIFFUSE) return diffuseMaterialT::calcColor(r, x);
     if (x.m.t == MAT_SPECULAR) return specularMaterialT::calcColor(r, x);
 
-    return float3(1.0, 0.0, 1.0);
+    // Some kind of recursion is really needed here but HLSL does not allow it,
+    // so return the ambient color of the walls.
+    return violet.a;
 }
 
 intersectionT traceNoRefractive(rayT r) {
@@ -477,6 +479,7 @@ intersectionT traceNoRefractive(rayT r) {
 
     return x;
 }
+
 intersectionT trace(rayT r) {
     intersectionT x;
 

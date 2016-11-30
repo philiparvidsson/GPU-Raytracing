@@ -83,6 +83,10 @@ public class MainScene : Scene {
     public override void Draw(float dt) {
         base.Draw(dt);
 
+        if (Game.Inst.Graphics.IsLagging) {
+            return;
+        }
+
         //System.Threading.Thread.Sleep(10);
 
         m_DoNothingTimer -= dt;
