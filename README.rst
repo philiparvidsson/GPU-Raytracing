@@ -19,12 +19,6 @@ Building and Running
 
 **NOTE**: *Scenes can take a long time to load!*
 
-Screenshots
-===========
-.. image:: assets/images/image_2016-11-28_05-54-29.png
-.. image:: assets/images/image_2016-11-29_22-33-19.png
-.. image:: assets/images/image_2016-11-29_23-44-03.png
-
 Videos
 ======
 .. image:: https://img.youtube.com/vi/bbuAzrRJE0w/0.jpg
