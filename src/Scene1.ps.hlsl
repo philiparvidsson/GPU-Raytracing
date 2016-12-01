@@ -47,9 +47,10 @@ static const int NUM_LIGHT_SAMPLES = 16;
 // calculate final pixel colors.
 static const int MAT_AMBIENT    = 0;
 static const int MAT_DIFFUSE    = 1;
-static const int MAT_REFLECTIVE = 2;
-static const int MAT_REFRACTIVE = 3;
-static const int MAT_SPECULAR   = 4;
+static const int MAT_FOG        = 2;
+static const int MAT_REFLECTIVE = 3;
+static const int MAT_REFRACTIVE = 4;
+static const int MAT_SPECULAR   = 5;
 
 // If you change these, you also need to change the number of created lights,
 // planes or spheres in their respective constants for the shader to compile.
@@ -223,6 +224,55 @@ struct diffuseMaterialT {
     }
 };
 
+struct fogMaterialT {
+    static float3 calcColor(rayT r, intersectionT x) {
+        float d = 0.0; // Diffuse intensity
+
+        rayT rPassthrough = rayT::create(r.o + r.d*x.t1, r.d);
+        intersectionT xPassthrough = trace(rPassthrough);
+
+        for (int i = 0; i < NUM_LIGHTS; i++) {
+            lightT light = lights[i];
+
+            for (int j = 1; j <= NUM_LIGHT_SAMPLES; j++) {
+                // The vector q is a random displacement for volume light sampling.
+                float3 q = 2.0*float3(rand(j*r.d.xy), rand(j*r.o.xy), rand(j*r.d.xy + r.o.xy)) - 1.0;
+                float3 l = light.p - x.p + q*light.r;
+
+                // We need to trace a ray to each light source to make sure it's
+                // not blocked by another surface. If it is, we're in a shadow.
+
+                rayT rShadow = rayT::create(x.p, l);
+                intersectionT xShadow = trace(rShadow);
+
+                if (xShadow.t0 >= T_NEAR && xShadow.t0 <= length(l)) {
+                    continue;
+                }
+
+                d += light.i;
+            }
+        }
+
+        float a = 1.0 - pow(tanh(10.0*(x.t1 - x.t0)), 8.0);
+        return a*calcColorNoRecurse(rPassthrough, xPassthrough) + (1.0 - a)*(x.m.a + d*x.m.d)/NUM_LIGHT_SAMPLES;
+    }
+
+    static materialT create(float ar, float ag, float ab,
+                            float dr, float dg, float db)
+    {
+        materialT material;
+
+        material.a = float3(ar, ag, ab);
+        material.d = float3(dr, dg, db);
+        material.s = float3(0.0, 0.0, 0.0);
+        material.k = 0.0;
+        material.r = 0.0;
+        material.t = MAT_FOG;
+
+        return material;
+    }
+};
+
 // Specular materials provide a diffuse base material plus a specular highlight
 // component. Think of specular materials as glass or metal.
 //     The specular material below implements the Phong shading model.
@@ -384,7 +434,7 @@ static const materialT green = specularMaterialT::create(0.2, 0.4, 0.3,
 static const materialT reflective = reflectiveMaterialT::create(0.0, 0.0, 0.0,
                                                                 0.0, 0.0, 0.0,
                                                                 5.0, 5.0, 5.0,
-                                                                500.0,
+                                                                300.0,
                                                                 0.5);
 
 static const materialT refractive = refractiveMaterialT::create(0.0, 0.0, 0.0,
@@ -401,10 +451,8 @@ static const materialT white = specularMaterialT::create(0.4, 0.4, 0.6,
                                                          1.0, 1.0, 1.0,
                                                          100.0);
 
-static const materialT yellow = diffuseMaterialT::create(0.7, 0.4, 0.2,
-                                                         1.0, 0.6, 0.1);
-
-
+static const materialT yellow = fogMaterialT::create(0.8, 0.4, 0.1,
+                                                     1.0, 0.6, 0.1);
 /*-------------------------------------
  * SURFACES
  *-----------------------------------*/
@@ -536,6 +584,7 @@ float3 calcColor(rayT r, intersectionT x) {
     switch (x.m.t) {
     case MAT_AMBIENT    : return ambientMaterialT::calcColor(r, x);
     case MAT_DIFFUSE    : return diffuseMaterialT::calcColor(r, x);
+    case MAT_FOG        : return fogMaterialT::calcColor(r, x);
     case MAT_REFLECTIVE : return reflectiveMaterialT::calcColor(r, x);
     case MAT_REFRACTIVE : return refractiveMaterialT::calcColor(r, x);
     case MAT_SPECULAR   : return specularMaterialT::calcColor(r, x);

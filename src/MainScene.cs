@@ -172,7 +172,7 @@ public class MainScene : Scene {
                 }
             }
 
-            m_ShaderUpdateTimer = 7.5f;
+            m_ShaderUpdateTimer = 0.5f;
         }
     }
 }
