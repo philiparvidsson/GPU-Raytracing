@@ -21,5 +21,5 @@ Building and Running
 
 Video
 =====
-.. image:: https://img.youtube.com/vi/imWXakqqbV0/0.jpg
-   :target: https://youtu.be/imWXakqqbV0
+.. image:: https://img.youtube.com/vi/6DbfnCAce4Y/0.jpg
+   :target: https://youtu.be/6DbfnCAce4Y
