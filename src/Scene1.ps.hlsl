@@ -613,6 +613,6 @@ void main(in PS_INPUT psIn, out PS_OUTPUT psOut) {
     rayT r = rayT::create(float3(eyeX, 0.5, eyeZ), float3(dx, dy, dz));
     intersectionT x = trace(r);
 
-    // ...and we're done! With a single pixel..!
+    // ...and we're done! (with one pixel..! :-) )
     psOut.color = float4(calcColor(r, x), 0.0);
 }
