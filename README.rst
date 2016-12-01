@@ -19,10 +19,7 @@ Building and Running
 
 **NOTE**: *Scenes can take a long time to load!*
 
-Videos
-======
-.. image:: https://img.youtube.com/vi/bbuAzrRJE0w/0.jpg
-   :target: https://youtu.be/bbuAzrRJE0w
-
-.. image:: https://img.youtube.com/vi/Q9mNYSZ0fLY/0.jpg
-   :target: https://youtu.be/Q9mNYSZ0fLY
+Video
+=====
+.. image:: https://www.youtube.com/watch?v=imWXakqqbV0
+   :target: https://youtu.be/imWXakqqbV0

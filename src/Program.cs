@@ -26,7 +26,7 @@ internal static class Program {
         Game.Inst.Run(new SharpDXGraphicsMgr(),
                       new SharpDXSoundMgr(),
                       "GPU-RT",
-                      400, 400,
+                      640, 640,
                       new MainScene(args.Length > 0 ? args[0] : null));
     }
 }
