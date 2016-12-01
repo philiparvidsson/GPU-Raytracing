@@ -1,7 +1,18 @@
-﻿/*-------------------------------------
- * STRUCTS
+﻿// HLSL is somewhat limited, so the order of constructs (i.e. functions,
+// structs etc.) is a bit weird in this file. This serves a purpose since the
+// compiler does not handle forward-references very well.
+//     I've tried to make as much sense of the order as possible and I've also
+// used commenting where necessary to provide a clear understanding of intent.
+//
+// - Philip Arvidsson
+//  December 1, 2016
+
+
+/*-------------------------------------
+ * CONSTANTS
  *-----------------------------------*/
 
+// These are passed into the shader through a constant buffer by the program.
 cbuffer cbConstants : register(b1) {
     float eyeX;
     float eyeZ;
@@ -9,75 +20,70 @@ cbuffer cbConstants : register(b1) {
     float time;
 };
 
-struct PS_INPUT {
-    float4 pos       : POSITION0;
-    float4 screenPos : SV_POSITION;
-    float2 texCoord  : TEXCOORD0;
-};
-
-struct PS_OUTPUT {
-    float4 color : SV_TARGET;
-};
-
+// Pi is obviously used in a lot of calculations when doing raytracing. :-)
 static const float PI = 3.1415926535897932;
+
+// Background color to return when a ray has no intersection.
 static const float4 BG_COL = float4(1.0, 1.0, 1.0, 0.0);
 
+// Near clip distance. There's no real unit to it, but we can imagine
+// every measurement in meters to get a more intuitive understanding.
+//     Any surface closer to the 'eye' than T_NEAR will be ignored.
 static const float T_NEAR = 0.01;
+
+// Far clip distance. Any surface farther from the 'eye' than T_FAR will be
+// ignoed.
 static const float T_FAR  = 99999.0;
 
+// Number of samples per light. Since the light sources have volumes, light
+// sampling is needed to provide a good rendering of the penumbras (the part of
+// the shadow which is not completely dark nor completely lit).
+//     Lowering this increases performance linearly, but reduces the rendering
+// quality of the penumbra.
+//     This raytracer uses Monte Carlo integration for penumbras.
 static const int NUM_LIGHT_SAMPLES = 16;
 
+// Material type constants. Only used for the shader to figure out how to
+// calculate final pixel colors.
 static const int MAT_AMBIENT    = 0;
 static const int MAT_DIFFUSE    = 1;
 static const int MAT_REFLECTIVE = 2;
 static const int MAT_REFRACTIVE = 3;
 static const int MAT_SPECULAR   = 4;
 
-struct lightT {
-    float  i; // Intensity
-    float3 p; // Position
-    float  r; // Radius
+// If you change these, you also need to change the number of created lights,
+// planes or spheres in their respective constants for the shader to compile.
+static const int NUM_LIGHTS  = 4;
+static const int NUM_PLANES  = 6;
+static const int NUM_SPHERES = 6;
 
-    static lightT create(float3 p, float i, float r) {
-        lightT light;
+/*-------------------------------------
+ * CORE STUFF
+ *-----------------------------------*/
 
-        light.i = i;
-        light.p = p;
-        light.r = r;
-
-        return light;
-    }
-};
-
-static const int NUM_LIGHTS = 4;
-static const lightT lights[NUM_LIGHTS] = {
-    lightT::create(float3(-0.4+cos(time*1.11), 0.5, -0.2+sin(time*1.11)), 0.22, 0.1),
-    lightT::create(float3( 0.8, 0.1, 0.4), 0.22, 0.1),
-    lightT::create(float3( -0.2, 0.6, 0.1), 0.22, 0.1),
-    lightT::create(float3( 0.2, 0.4, -0.5), 0.22, 0.1)
-};
-
-float rand(float2 x) {
-    return frac(sin(dot(x, float2(12.9898, 78.233)))*43758.5453);
-}
-
+// Since there are no abstract classes (for our intent, at least) in HLSL, we
+// create a common struct containing everything needed for every kind of
+// material. Although this wastes a bit of memory, it simplifies the pixel color
+// calculation functions greatly.
 struct materialT {
     float3 a; // Ambient
     float3 d; // Diffuse
     float3 s; // Specular
     float  k; // Shininess
     float  r; // Reflectiveness;
-    int    t; // Type.
+    int    t; // Material type (e.g. MAT_AMBIENT or MAT_DIFFUSE, etc.).
 };
 
+// Represents a single intersection between a ray and a surface.
 struct intersectionT {
-    materialT m;
-    float3    n;    // Normal
-    float3    p;    // Position
-    float     t0;   // Near
-    float     t1;   // Far
+    materialT m;    // Surface material.
+    float3    n;    // Surface normal
+    float3    p;    // Position of intersection in world frame-of-reference.
+    float     t0;   // Near intersection for quadratics.
+    float     t1;   // Far intersection for quadratics (otherwise == t0)
 };
 
+// A ray cast by the raytracer, to be intersected with surfaces.
 struct rayT {
     float3 d; // Direction
     float3 o; // Origin
@@ -92,11 +98,65 @@ struct rayT {
     }
 };
 
-float3 calcColorNoRecurse(rayT r, intersectionT x);
+/*-------------------------------------
+ * DECLARATIONS
+ *-----------------------------------*/
 
+// Some declarations are needed for the compiler to get the forward-references.
+
+float3 calcColorNoRecurse(rayT r, intersectionT x);
+float rand(float2 x);
 intersectionT trace(rayT r);
 intersectionT traceNoRefractive(rayT r);
 
+/*-------------------------------------
+ * STRUCTS
+ *-----------------------------------*/
+
+struct PS_INPUT {
+    float4 pos       : POSITION0;
+    float4 screenPos : SV_POSITION;
+    float2 texCoord  : TEXCOORD0;
+};
+
+struct PS_OUTPUT {
+    float4 color : SV_TARGET;
+};
+
+// A volume (box shaped) light source.
+struct lightT {
+    float  i; // Intensity as real multiple
+    float3 p; // Light position in world space
+    float  r; // Size of light box (width, height and depth)
+
+    static lightT create(float3 p, float i, float r) {
+        lightT light;
+
+        light.i = i;
+        light.p = p;
+        light.r = r;
+
+        return light;
+    }
+};
+
+/*-------------------------------------
+ * LIGHTS
+ *-----------------------------------*/
+
+static const lightT lights[NUM_LIGHTS] = {
+    lightT::create(float3(-0.4+cos(time*1.11), 0.5, -0.2+sin(time*1.11)), 0.22, 0.1),
+    lightT::create(float3( 0.8, 0.1, 0.4), 0.22, 0.1),
+    lightT::create(float3( -0.2, 0.6, 0.1), 0.22, 0.1),
+    lightT::create(float3( 0.2, 0.4, -0.5), 0.22, 0.1)
+};
+
+/*-------------------------------------
+ * MATERIALS
+ *-----------------------------------*/
+
+// Surfaces with ambient materials have no real shading, but are rather self
+// illuminating.
 struct ambientMaterialT {
     static float3 calcColor(rayT r, intersectionT x) {
         return x.m.a;
@@ -116,6 +176,8 @@ struct ambientMaterialT {
     }
 };
 
+// Diffuse surfaces have shading, but no specular highlight. Think of diffuse
+// materials as matte surfaces, such as wood or rubber.
 struct diffuseMaterialT {
     static float3 calcColor(rayT r, intersectionT x) {
         float d = 0.0; // Diffuse intensity
@@ -124,8 +186,13 @@ struct diffuseMaterialT {
             lightT light = lights[i];
 
             for (int j = 1; j <= NUM_LIGHT_SAMPLES; j++) {
+                // The vector q is a random displacement for volume light sampling.
                 float3 q = 2.0*float3(rand(j*r.d.xy), rand(j*r.o.xy), rand(j*r.d.xy + r.o.xy)) - 1.0;
                 float3 l = light.p - x.p + q*light.r;
+
+                // We need to trace a ray to each light source to make sure it's
+                // not blocked by another surface. If it is, we're in a shadow.
+
                 rayT rShadow = rayT::create(x.p, l);
                 intersectionT xShadow = trace(rShadow);
 
@@ -133,9 +200,7 @@ struct diffuseMaterialT {
                     continue;
                 }
 
-                l = normalize(l);
-
-                d += light.i*max(dot(l, x.n), 0.0);
+                d += light.i*max(dot(normalize(l), x.n), 0.0);
             }
         }
 
@@ -158,6 +223,9 @@ struct diffuseMaterialT {
     }
 };
 
+// Specular materials provide a diffuse base material plus a specular highlight
+// component. Think of specular materials as glass or metal.
+//     The specular material below implements the Phong shading model.
 struct specularMaterialT {
     static float3 calcColor(rayT r, intersectionT x) {
         float d = 0.0; // Diffuse intensity
@@ -171,8 +239,11 @@ struct specularMaterialT {
             lightT light = lights[i];
 
             for (int j = 1; j <= NUM_LIGHT_SAMPLES; j++) {
+                // The vector q is a random displacement for volume light sampling.
                 float3 q = 2.0*float3(rand(j*r.d.xy), rand(j*r.o.xy), rand(j*r.d.xy + r.o.xy)) - 1.0;
                 float3 l = light.p - p + q*light.r;
+
+                // Check for shadows.
                 rayT rShadow = rayT::create(p, l);
                 intersectionT xShadow = trace(rShadow);
                 if (xShadow.t0 >= T_NEAR && xShadow.t0 <= length(l)) {
@@ -208,7 +279,9 @@ struct specularMaterialT {
     }
 };
 
-
+// The reflective material is a mix of a specular material and a reflection of
+// the surface environment (tracing a second ray to sample its environment).
+//     A mirror is a perfect example of a reflective material.
 struct reflectiveMaterialT {
     static float3 calcColor(rayT r, intersectionT x) {
         float3 v = normalize(x.p - r.o);
@@ -217,7 +290,7 @@ struct reflectiveMaterialT {
 
         float3 a = calcColorNoRecurse(rReflect, xReflect);
         float3 b = specularMaterialT::calcColor(r, x);
-        float  d = 0.8;
+        float  d = 0.8; // Wanted x.m.r here, but compiler dies. Compiler bug.
 
         return pow(a, 1.2) + b;
     }
@@ -240,6 +313,9 @@ struct reflectiveMaterialT {
     }
 };
 
+// Refractive surfaces allow light to pass through, but refracts light rays
+// depending on the difference in refractive index between the two mediums.
+//     Water is a perfect example of a refractive material.
 struct refractiveMaterialT {
     static float3 calcColor(rayT r, intersectionT x) {
         float3 n = x.n;
@@ -295,6 +371,8 @@ struct refractiveMaterialT {
     }
 };
 
+// Go ahead and play with the material definitions below!
+
 static const materialT blue = diffuseMaterialT::create(0.2, 0.5, 0.7,
                                                        0.1, 0.5, 1.0);
 
@@ -326,8 +404,15 @@ static const materialT white = specularMaterialT::create(0.4, 0.4, 0.6,
 static const materialT yellow = diffuseMaterialT::create(0.7, 0.4, 0.2,
                                                          1.0, 0.6, 0.1);
 
+
+/*-------------------------------------
+ * SURFACES
+ *-----------------------------------*/
+
+// A plane consists of a position and a normal. It is also infinite, meaning the
+// position and normal define an infinite spanning plane in 3-space.
 struct planeT {
-    materialT m;
+    materialT m; // Material
     float3    n; // Normal
     float3    p; // Position
 
@@ -342,13 +427,15 @@ struct planeT {
     }
 
     void intersect(rayT r, inout intersectionT x) {
-        // (o - p + d*t) . n = 0
+        // We need to solve the following: (o - p + d*) . n = 0
+        // Rewriting with vector components:
         // (o.x - p.x + d.x*t) * n.x + (o.y - p.y + d.y*t) * n.y + (o.z - p.z + d.z*t) * n.z = 0
         // n.x*o.x - n.x*p.x + n.x*d.x*t + n.y*o.y - n.y*p.y + n.y*d.y*t + n.z*o.z - n.z*p.z + n.z*d.z*t = 0
         // n.x*o.x + n.x*d.x*t + n.y*o.y + n.y*d.y*t + n.z*o.z + n.z*d.z*t = n.x*p.x + n.y*p.y + n.z*p.z
         // n.x*d.x*t + n.y*d.y*t + n.z*d.z*t = n.x*p.x + n.y*p.y + n.z*p.z - n.x*o.x - n.y*o.y - n.z*o.z
         // t*(n.x*d.x + n.y*d.y + n.z*d.z) = n.x*p.x + n.y*p.y + n.z*p.z - n.x*o.x - n.y*o.y - n.z*o.z
         // t = (n.x*p.x + n.y*p.y + n.z*p.z - n.x*o.x - n.y*o.y - n.z*o.z)/(n.x*d.x + n.y*d.y + n.z*d.z)
+        // So we get the following solution:
         // t = (n . p - n . o)/(n . d)
         float t = (dot(n, p) - dot(n, r.o)) / dot(n, r.d);
 
@@ -360,12 +447,13 @@ struct planeT {
         x.n  = n;
         x.p  = r.o + r.d*t;
         x.t0 = t;
-        x.t1 = t;
+        x.t1 = t; // Planes have no thickness, so t1=t0.
     }
 };
 
+// A sphere consists of a position and radius.
 struct sphereT {
-    materialT m;
+    materialT m; // Material
     float3    p; // Position
     float     r; // Radius
 
@@ -389,7 +477,7 @@ struct sphereT {
         float  j = -c/a + i*i;
 
         if (j < 0.0) {
-            // No solution -> no intersection.
+            // No solution means no intersection.
             return;
         }
 
@@ -410,7 +498,8 @@ struct sphereT {
     }
 };
 
-static const int NUM_PLANES = 6;
+// You can change the scene by modifying the placement of surfaces below.
+
 static const planeT planes[NUM_PLANES] = {
     planeT::create(float3( 0.0, 0.0,  0.0), float3( 0.0,  1.0,  0.0), violet),
     planeT::create(float3( 0.0, 2.0,  0.0), float3( 0.0, -1.0,  0.0), violet),
@@ -420,39 +509,51 @@ static const planeT planes[NUM_PLANES] = {
     planeT::create(float3( 0.0, 0.0,  2.0), float3( 0.0,  0.0, -1.0), violet)
 };
 
-static const int NUM_SPHERES = 6;
 static const sphereT spheres[NUM_SPHERES] = {
-    sphereT::create(float3(0.0, 0.8, 0.0), 0.2, reflective),
-    sphereT::create(float3(0.65, 0.5, 0.65), 0.15, refractive),
-    sphereT::create(float3(0.7*cos(time*1.3), 0.4, 0.7*sin(time*1.3)), 0.1, white),
-    sphereT::create(float3(0.95*cos(time*0.8), 0.3, 0.95*sin(time*0.8)), 0.07, blue),
-    sphereT::create(float3(1.15*cos(time*1.5), 0.6, 1.15*sin(time*1.5)), 0.09, yellow),
-    sphereT::create(float3(1.35*cos(time*1.4), 0.5, 1.35*sin(time*1.4)), 0.09, green)
+    sphereT::create(float3(0.0               , 0.8, 0.0               ), 0.2 , reflective),
+    sphereT::create(float3(0.65              , 0.5, 0.65              ), 0.15, refractive),
+    sphereT::create(float3(0.7*cos(time*1.3) , 0.4, 0.7*sin(time*1.3) ), 0.1 , white     ),
+    sphereT::create(float3(0.95*cos(time*0.8), 0.3, 0.95*sin(time*0.8)), 0.07, blue      ),
+    sphereT::create(float3(1.15*cos(time*1.5), 0.6, 1.15*sin(time*1.5)), 0.09, yellow    ),
+    sphereT::create(float3(1.35*cos(time*1.4), 0.5, 1.35*sin(time*1.4)), 0.09, green     )
 };
 
+/*-------------------------------------
+ * FUNCTIONS
+ *-----------------------------------*/
+
+// One liner for pseudo-random numbers in HLSL shaders.
+float rand(float2 x) {
+    return frac(sin(dot(x, float2(12.9898, 78.233)))*43758.5453);
+}
+
+// Calculates the final color of a ray and its intersection with a surface.
 float3 calcColor(rayT r, intersectionT x) {
     if (x.t0 >= T_FAR) {
         return BG_COL;
     }
 
     switch (x.m.t) {
-    case MAT_AMBIENT: return ambientMaterialT::calcColor(r, x);
-    case MAT_DIFFUSE: return diffuseMaterialT::calcColor(r, x);
-    case MAT_REFLECTIVE: return reflectiveMaterialT::calcColor(r, x);
-    case MAT_REFRACTIVE: return refractiveMaterialT::calcColor(r, x);
-    case MAT_SPECULAR: return specularMaterialT::calcColor(r, x);
+    case MAT_AMBIENT    : return ambientMaterialT::calcColor(r, x);
+    case MAT_DIFFUSE    : return diffuseMaterialT::calcColor(r, x);
+    case MAT_REFLECTIVE : return reflectiveMaterialT::calcColor(r, x);
+    case MAT_REFRACTIVE : return refractiveMaterialT::calcColor(r, x);
+    case MAT_SPECULAR   : return specularMaterialT::calcColor(r, x);
     }
 
+    // This should never happen unless we encounter an unknown material.
     return float3(1.0, 0.0, 1.0);
 }
 
+// Calculates the final color of a ray and its intersection with a surface.
 float3 calcColorNoRecurse(rayT r, intersectionT x) {
     if (x.t0 >= T_FAR) {
         return BG_COL;
     }
 
-    if (x.m.t == MAT_AMBIENT) return ambientMaterialT::calcColor(r, x);
-    if (x.m.t == MAT_DIFFUSE) return diffuseMaterialT::calcColor(r, x);
+    // Using a switch statement fails here. Seems to be a compiler bug.
+    if (x.m.t == MAT_AMBIENT ) return ambientMaterialT::calcColor(r, x);
+    if (x.m.t == MAT_DIFFUSE ) return diffuseMaterialT::calcColor(r, x);
     if (x.m.t == MAT_SPECULAR) return specularMaterialT::calcColor(r, x);
 
     // Some kind of recursion is really needed here but HLSL does not allow it,
@@ -460,6 +561,25 @@ float3 calcColorNoRecurse(rayT r, intersectionT x) {
     return violet.a;
 }
 
+// Traces a single ray and finds the nearest intersection.
+intersectionT trace(rayT r) {
+    intersectionT x;
+
+    x.t0 = T_FAR;
+
+    for (int i = 0; i < NUM_PLANES; i++) {
+        planes[i].intersect(r, x);
+    }
+
+    for (int i = 0; i < NUM_SPHERES; i++) {
+        spheres[i].intersect(r, x);
+    }
+
+    return x;
+}
+
+// Traces a single ray and finds the nearest intersection. Ignores refractive
+// surfaces. Again a hack to avoid recursion.
 intersectionT traceNoRefractive(rayT r) {
     intersectionT x;
 
@@ -480,33 +600,19 @@ intersectionT traceNoRefractive(rayT r) {
     return x;
 }
 
-intersectionT trace(rayT r) {
-    intersectionT x;
-
-    x.t0 = T_FAR;
-
-    for (int i = 0; i < NUM_PLANES; i++) {
-        planes[i].intersect(r, x);
-    }
-
-    for (int i = 0; i < NUM_SPHERES; i++) {
-        spheres[i].intersect(r, x);
-    }
-
-    return x;
-}
-
 void main(in PS_INPUT psIn, out PS_OUTPUT psOut) {
-    float3 eye = float3(eyeX, 0.5, eyeZ);
-    float a = 3.141592654 / 2.0;
-    float theta = heading + a;
+    // The direction to point the eye in, given by the C# program.
+    float theta = heading + PI/2.0;
+
+    // Calculating the direction in Cartesian coordinates here.
     float dx = cos(theta) + psIn.pos.x*cos(heading);
     float dy = psIn.pos.y;
     float dz = sin(theta) + psIn.pos.x*sin(heading);
-    float3 d = float3(dx, dy, dz);
 
-    rayT r = rayT::create(eye, d);
-
+    // Trace the race...
+    rayT r = rayT::create(float3(eyeX, 0.5, eyeZ), float3(dx, dy, dz));
     intersectionT x = trace(r);
+
+    // ...and we're done! With a single pixel..!
     psOut.color = float4(calcColor(r, x), 0.0);
 }
