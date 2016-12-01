@@ -147,9 +147,9 @@ struct lightT {
 
 static const lightT lights[NUM_LIGHTS] = {
     lightT::create(float3(-0.4+cos(time*1.11), 0.5, -0.2+sin(time*1.11)), 0.22, 0.1),
-    lightT::create(float3( 0.8, 0.1, 0.4), 0.22, 0.1),
-    lightT::create(float3( -0.2, 0.6, 0.1), 0.22, 0.1),
-    lightT::create(float3( 0.2, 0.4, -0.5), 0.22, 0.1)
+    lightT::create(float3( 0.8               , 0.1,  0.4               ), 0.22, 0.1),
+    lightT::create(float3(-0.2               , 0.6,  0.1               ), 0.22, 0.1),
+    lightT::create(float3( 0.2               , 0.4, -0.5               ), 0.22, 0.1)
 };
 
 /*-------------------------------------
@@ -224,6 +224,11 @@ struct diffuseMaterialT {
     }
 };
 
+// Provides a fog-like material. The model I've implemented has no basis in
+// physical reality, but is rather a result of experimenting and having fun. It
+// looks ok but could probably be improved upon.
+//     It basically measures the thickness of the material in the ray direction
+// and calculates color transparency from it.
 struct fogMaterialT {
     static float3 calcColor(rayT r, intersectionT x) {
         float d = 0.0; // Diffuse intensity
