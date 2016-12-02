@@ -20,7 +20,7 @@ cbuffer cbConstants : register(b1) {
     float time;
 };
 
-// Pi is obviously used in a lot of calculations when doing raytracing. :-)
+// Pi is nice! :-)
 static const float PI = 3.1415926535897932;
 
 // Background color to return when a ray has no intersection.
