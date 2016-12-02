@@ -480,7 +480,7 @@ struct planeT {
     }
 
     void intersect(rayT r, inout intersectionT x) {
-        // We need to solve the following: (o - p + d*) . n = 0
+        // We need to solve the following: (o - p + dt) . n = 0
         // Rewriting with vector components:
         // (o.x - p.x + d.x*t) * n.x + (o.y - p.y + d.y*t) * n.y + (o.z - p.z + d.z*t) * n.z = 0
         // n.x*o.x - n.x*p.x + n.x*d.x*t + n.y*o.y - n.y*p.y + n.y*d.y*t + n.z*o.z - n.z*p.z + n.z*d.z*t = 0
