@@ -32,7 +32,7 @@ static const float4 BG_COL = float4(1.0, 1.0, 1.0, 0.0);
 static const float T_NEAR = 0.01;
 
 // Far clip distance. Any surface farther from the 'eye' than T_FAR will be
-// ignoed.
+// ignored.
 static const float T_FAR  = 99999.0;
 
 // Number of samples per light. Since the light sources have volumes, light
