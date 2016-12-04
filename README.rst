@@ -8,7 +8,7 @@ Features
 * Keyboard controls
 * Parallelization through use of shader units on GPU
 * Specular materials (Phong illumination)
-* Refractions (using Snell's law)
+* Refractions (Snell's law)
 * Reflections
 * Soft shadows/shadow ray sampling (Monte Carlo integration)
 
