@@ -7,7 +7,9 @@ Features
 * Adaptive antialiasing (not working too well)
 * Keyboard controls
 * Parallelization through use of shader units on GPU
-* Phong shading model
+* Specular materials (Phong illumination)
+* Refractions (using Snell's law)
+* Reflections
 * Soft shadows/shadow ray sampling (Monte Carlo integration)
 
 Building and Running
